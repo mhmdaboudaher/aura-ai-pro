@@ -24,9 +24,15 @@ export async function POST(req: Request) {
 
     // استخدام موديل openai/gpt-oss-120b
     const chatCompletion = await groq.chat.completions.create({
-      messages: messages,
-      model: 'openai/gpt-oss-120b',
-    });
+  messages: [
+    {
+      role: 'system',
+      content: 'You are AURA AI, a helpful assistant. Always respond using clear, clean Markdown or normal plain text. Never generate HTML code unless the user explicitly asks for website code.'
+    },
+    ...messages
+  ],
+  model: 'openai/gpt-oss-120b',
+});
 
     const aiReply = chatCompletion.choices[0]?.message?.content || "لم أستطع الحصول على إجابة.";
 
