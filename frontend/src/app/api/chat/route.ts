@@ -23,12 +23,20 @@ export async function POST(req: Request) {
     }
 
     // استخدام موديل openai/gpt-oss-120b
+    const cleanMessages = Array.isArray(messages)
+      ? messages.map((msg: any) => ({
+          role: msg.role || 'user',
+          content: msg.content || '',
+        }))
+      : [];
+
     const formattedMessages = [
       {
         role: 'system',
-        content: 'You are AURA AI, a helpful assistant. Always respond using clean Markdown or plain text. Never generate HTML code.',
+        content:
+          'You are AURA AI, a helpful assistant. Always respond using clean Markdown or plain text. Never output raw HTML elements.',
       },
-      ...(Array.isArray(messages) ? messages : [messages]),
+      ...cleanMessages,
     ];
 
     const chatCompletion = await groq.chat.completions.create({
