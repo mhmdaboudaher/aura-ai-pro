@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useUser, SignInButton, UserButton } from '@clerk/nextjs';
 
 export default function Home() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const { isSignedIn, user } = useUser();
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -20,7 +22,10 @@ export default function Home() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ 
+          messages: newMessages,
+          userId: user?.id 
+        }),
       });
 
       const data = await res.json();
@@ -28,63 +33,72 @@ export default function Home() {
       if (res.ok && data.result) {
         setMessages([...newMessages, { role: 'assistant', content: data.result }]);
       } else {
-        setMessages([
-          ...newMessages,
-          { role: 'assistant', content: `عذراً، حدث خطأ: ${data.error || 'تعذر جلب الإجابة'}` },
-        ]);
+        setMessages([...newMessages, { role: 'assistant', content: 'حدث خطأ أثناء معالجة الطلب.' }]);
       }
-    } catch (err) {
-      setMessages([
-        ...newMessages,
-        { role: 'assistant', content: 'عذراً، حدث خطأ أثناء الاتصال بالسيرفر.' },
-      ]);
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-screen bg-slate-900 text-white p-4">
-      <header className="p-4 border-b border-slate-700 font-bold text-xl flex items-center justify-between">
-        <div>
-          <span>AURA AI </span>
-          <span className="text-xs bg-blue-600 px-2 py-1 rounded ml-2">PRO</span>
+    <div className="flex flex-col h-screen bg-slate-900 text-white">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold">AURA AI</h1>
+          <span className="bg-blue-600 text-xs px-2 py-0.5 rounded text-white font-semibold">PRO</span>
         </div>
-        <div className="text-xs text-gray-400">متصل بـ openai/gpt-oss-120b</div>
+
+        {/* أزرار التسجيل والحساب */}
+        <div className="flex items-center gap-4">
+          {!isSignedIn ? (
+            <SignInButton mode="modal">
+              <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+                تسجيل الدخول
+              </button>
+            </SignInButton>
+          ) : (
+            <UserButton />
+          )}
+        </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((m, i) => (
+      {/* منطقة المحادثة */}
+      <main className="flex-1 overflow-y-auto p-6 space-y-4">
+        {messages.map((msg, index) => (
           <div
-            key={i}
-            className={`p-3 rounded-lg max-w-2xl whitespace-pre-wrap ${
-              m.role === 'user'
-                ? 'bg-blue-600 ml-auto text-right'
-                : 'bg-slate-800 mr-auto text-left border border-slate-700'
+            key={index}
+            className={`p-4 rounded-xl max-w-2xl ${
+              msg.role === 'user' ? 'bg-blue-600 ml-auto' : 'bg-slate-800'
             }`}
           >
-            {m.content}
+            {msg.content}
           </div>
         ))}
-        {loading && <div className="text-gray-400 animate-pulse">جاري جلب الإجابة...</div>}
-      </div>
+        {loading && <div className="text-slate-400 text-sm">جاري التفكير...</div>}
+      </main>
 
-      <div className="flex gap-2 p-2 bg-slate-800 rounded-lg border border-slate-700">
-        <input
-          className="flex-1 bg-transparent outline-none px-3 text-white placeholder-gray-400"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder="اكتب سؤالك هنا..."
-        />
-        <button
-          onClick={sendMessage}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-500 px-5 py-2 rounded-lg font-medium transition disabled:opacity-50"
-        >
-          إرسال
-        </button>
-      </div>
+      {/* مربع إدخال النص */}
+      <footer className="p-4 border-t border-slate-800">
+        <div className="flex gap-2 max-w-4xl mx-auto">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+            placeholder="اكتب سؤالك..."
+            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition"
+          >
+            إرسال
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
